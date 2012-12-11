@@ -5,41 +5,44 @@
 * Time: 11:13 AM
 *
 */
-
 var content=new String("");
+//'walk_courses.tcx'
+var dataFile=['activity-goals-fr405.TCX'];
 function load()
 {
-    var display = new Garmin.DeviceDisplay("garminDisplay",
+   var  display = new Garmin.DeviceDisplay("garminDisplay",
         {
 //                        pathKeyPairsArray: ["http://developer.garmin.com/","ee3934433a35ee348583236c2eeadbc1"],
             unlockOnPageLoad: true,
             showStatusElement: true,
-            autoFindDevices: false,
-            findDevicesButtonText: "Select Device",
+            autoFindDevices: true,
+            findDevicesButtonText: "Search for Devices",
             showCancelFindDevicesButton: false,
             autoWriteData: false,
+            activityDirectoryCheckAllTooltip: "select all",//jj
+            activityDirectoryHeaderStatus: false,//jj
             autoReadData: true,
-            showReadDataElement: false,
+            showReadDataElement: true,
             uploadSelectedActivities: true,
             showReadTracksSelect: true,
             useDeviceBrowser: false,
             postActivityHandler: function(aFile, aDisplay){ postFile(aFile, aDisplay);},
-            statusCellProcessingImg: '<img src="img/ajax-loader.gif" width="15" height="15" />', //change default path for loading img
+            statusCellProcessingImg: '<img src="../img/spinner.gif" width="15" height="15" />', //change default path for loading img
             readDataType: Garmin.DeviceControl.FILE_TYPES.readableDir,
-            fileListingOptions:	[ {dataTypeName: 'GPSData',
-                dataTypeID: 'http://www.topografix.com/GPX/1/1',
-                computeMD5: false},
-                {dataTypeName: 'UserDataSync',
-                    dataTypeID: 'http://www.topografix.com/GPX/1/1',
-                    computeMD5: false },{dataTypeName: 'FIT_TYPE_4',
-                    dataTypeID: 'FIT',
-                    computeMD5: false} ]
+            fileListingOptions:	[
+                {dataTypeName: 'GPSData',dataTypeID: 'http://www.topografix.com/GPX/1/1', computeMD5: false},
+                {dataTypeName: 'FitnessHistory', dataTypeID: 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2',computeMD5: false}
+                               ]
         });
+
 }
 
 function postFile(aFile, aDisplay)
 {
 
+    var pass=false;
+    var theStatusCell = aDisplay.currentActivityStatusElement();
+    content="";
     var theContent = $('outputDiv').innerHTML;
 
     if( theContent.length == 0 )
@@ -50,27 +53,51 @@ function postFile(aFile, aDisplay)
     //This is where you'd do a custom post to your server or some other useful thing.
     //We'll just print out the file header (begin <mode> <filename>)
     var wholetext = aFile.split('\n');
-
-
-    for(var i = 1; i < wholetext.length-1; i++){
-
-        content = content.concat( wholetext[i] );
-    }
-    var theLines = decode64(content);
-
-    if( theLines.length > 0 )
+    var n=wholetext[0].lastIndexOf(" ");
+    var nam=wholetext[0].slice(n);
+    nam=nam.replace(/^\s+|\s+$/g, '') ;// for replace spaces
+    for(var j=0;j<dataFile.length;j++)
     {
-
-        theContent += '<br/>' + '<pre>' +theLines.escapeHTML()+'</pre>';
-    }
-    $('outputDiv').innerHTML = theContent;
-
-    //set upload status.
-    var theStatusCell = aDisplay.currentActivityStatusElement();
-    if( theStatusCell ) {
-        theStatusCell.innerHTML = 'Done';
+        if(nam==dataFile[j])
+        {
+            pass=true;
+        }
 
     }
+
+      if(pass==true)
+        {
+//            var theStatusCell = aDisplay.currentActivityStatusElement();
+            theStatusCell.innerHTML = 'Exists';
+        }
+        else if(pass==false)
+        {
+
+            for(var i = 1; i < wholetext.length-1; i++){
+
+                content = content.concat( wholetext[i] );
+            }
+            var theLines = decode64(content);
+
+            readXML(theLines);
+//
+//            if( theLines.length > 0 )
+//            {
+//
+//                theContent+="Name is "+ nam;
+//                theContent += '<br/>' + '<pre>' +theLines.escapeHTML()+'</pre>';
+//            }
+//            $('outputDiv').innerHTML = theContent;
+
+            //set upload status.
+//            var theStatusCell = aDisplay.currentActivityStatusElement();
+            if( theStatusCell ) {
+                theStatusCell.innerHTML = 'Done';
+
+            }
+
+
+        }
 
     if( aDisplay.activityQueue.size() == 1)
     {
@@ -79,6 +106,7 @@ function postFile(aFile, aDisplay)
         //to determine when to finalize the DeviceDisplay status. Here, we'll pretend the uploads were instantaneous.
         aDisplay.setStatus('The Selected Binary file reads are complete!');
     }
+
 }
 
 
@@ -157,5 +185,36 @@ function decode64(input) {
 
 }
 
+function readXML(aFile) {
+
+    var da;
+
+    if (window.DOMParser)
+  {
+      parser=new DOMParser();
+      xmlDoc=parser.parseFromString(aFile,"text/xml");
+      }
+    else // Internet Explorer
+  {
+      xmlDoc=new ActiveXObject("Microsoft.XMLDOM");
+      xmlDoc.async=false;
+      xmlDoc.loadXML(aFile);
+      }
+     da+=xmlDoc.getElementsByTagName("TotalTimeSeconds")[0].childNodes[0].nodeValue;
+
+    jk= xmlDoc.getElementsByTagName("BeginPosition");
+    da+=" Begin Point"
+    da+=jk[0].getElementsByTagName("LatitudeDegrees")[0].childNodes[0].nodeValue
+    da+=" - ";
+    da+=jk[0].getElementsByTagName("LongitudeDegrees")[0].childNodes[0].nodeValue
+    document.getElementById('outputDiv').innerHTML =da
+
+
+//    document.getElementById("to").innerHTML=xmlDoc.getElementsByTagName("to")[0].childNodes[0].nodeValue;
+//    document.getElementById("from").innerHTML=xmlDoc.getElementsByTagName("from")[0].childNodes[0].nodeValue;
+//    document.getElementById("message").innerHTML=xmlDoc.getElementsByTagName("body")[0].childNodes[0].nodeValue;
+
+
+}
 
 
